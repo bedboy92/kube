@@ -1,0 +1,27 @@
+FROM centos:7
+
+RUN yum -y update && yum clean all
+RUN yum -y install wget httpd httpd-devel gcc* make && yum clean all 
+
+# Install mod_jk
+RUN wget https://dlcdn.apache.org/tomcat/tomcat-connectors/jk/tomcat-connectors-1.2.49-src.tar.gz 
+RUN tar -xvf tomcat-connectors-1.2.49-src.tar.gz 
+RUN tomcat-connectors-1.2.49-src/native/configure --with-apxs=/usr/bin/apxs 
+RUN make 
+RUN cp apache-2.0/mod_jk.so /usr/lib64/httpd/modules/ 
+RUN rm -f tomcat-connectors-1.2.49-src.tar.gz
+
+RUN mv /etc/httpd/conf/httpd.conf /etc/httpd/conf/httpd.conf_ori
+RUN rm -f /etc/httpd/conf.d/welcome.conf
+COPY httpd.conf /etc/httpd/conf/
+COPY workers.properties /etc/httpd/conf.d/
+COPY mod_jk.conf /etc/httpd/conf.d/
+COPY index.html /var/www/html/
+
+EXPOSE 80
+
+# Timezone
+RUN mv /etc/localtime /etc/localtime_org 
+RUN ln -s /usr/share/zoneinfo/Asia/Seoul /etc/localtime
+
+ENTRYPOINT ["/usr/sbin/apachectl", "-D", "FOREGROUND"]

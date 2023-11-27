@@ -1,0 +1,40 @@
+FROM centos:7
+
+RUN yum -y update && yum clean all
+
+# Install openjdk 1.8
+RUN yum install -y java-1.8.0-openjdk-devel.x86_64 wget net-tools tcpdump 
+RUN ln -s /usr/lib/jvm/java-1.8.0-openjdk* /usr/lib/jvm/java-1.8.0-openjdk
+#ENV JAVA_HOME=java-1.8.0-openjdk 
+#ENV export JAVA_HOME
+#ENV PATH=$PATH:$JAVA_HOME/bin
+#ENV export PATH
+
+# Install tomcat
+RUN wget https://dlcdn.apache.org/tomcat/tomcat-9/v9.0.83/bin/apache-tomcat-9.0.83.tar.gz 
+RUN tar -xvf apache-tomcat-9.0.83.tar.gz 
+RUN mv apache-tomcat-9.0.83 /usr/local/tomcat9 
+RUN rm -rf /apache-tomcat-9.0.83.tar.gz  
+
+ENV CATALINA_HOME=/usr/local/tomcat9
+ENV CATALINA_BASE=/usr/local/tomcat9
+
+RUN mv /usr/local/tomcat9/conf/server.xml /usr/local/tomcat9/conf/server.xml_ori
+COPY server.xml /usr/local/tomcat9/conf/
+
+# Download JDBC
+RUN wget https://downloads.mysql.com/archives/get/p/3/file/mysql-connector-java-5.1.40.tar.gz
+RUN tar -xvf mysql-connector-java-5.1.40.tar.gz
+RUN mv mysql-connector-java-5.1.40/mysql-connector-java-5.1.40-bin.jar /usr/local/tomcat9/lib
+
+# Timezone
+RUN mv /etc/localtime /etc/localtime_org \
+    && ln -s /usr/share/zoneinfo/Asia/Seoul /etc/localtime
+
+RUN rm -rf /usr/local/tomcat9/webapps/ROOT/*
+COPY index.jsp /usr/local/tomcat9/webapps/ROOT/
+COPY mysql.jsp /usr/local/tomcat9/webapps/ROOT/
+ENTRYPOINT ["/usr/local/tomcat9/bin/catalina.sh", "run"]
+
+#EXPOSE 8080
+EXPOSE 8009

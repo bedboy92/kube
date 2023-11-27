@@ -1,0 +1,87 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: svc-mysql
+spec:
+  selector:
+    app: mysql
+  type: NodePort
+  ports:
+  - protocol: TCP
+    port: 3306
+    nodePort: 31002
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pod-mysql
+spec:
+  selector:
+    matchLabels:
+      app: mysql
+  strategy:
+    type: Recreate
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: mysql
+    spec:
+      containers:
+      - name: mysql
+        image: mysql:5.7
+        ports:
+        - containerPort: 3306
+        env:
+          - name: MYSQL_HOST
+            valueFrom:
+              configMapKeyRef:
+                name: cfgmap-mysql
+                key: host
+          - name: MYSQL_PORT
+            valueFrom:
+              configMapKeyRef: 
+                name: cfgmap-mysql
+                key: port
+          - name: MYSQL_DATABASE
+            valueFrom:
+              configMapKeyRef:
+                name: cfgmap-mysql
+                key: database
+          - name: MYSQL_USER
+            valueFrom:
+              configMapKeyRef:
+                name: cfgmap-mysql
+                key: user
+          - name: MYSQL_ROOT_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: mysql-secret
+                key: root_password
+          - name: MYSQL_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: mysql-secret
+                key: password
+        volumeMounts:
+        - name: cfgmap-mysql
+          mountPath: "/config"
+          readOnly: true
+        - name: mysql-persistent-storage
+          mountPath: /var/lib/mysql
+      volumes:
+        - name: cfgmap-mysql
+          configMap:
+            name: cfgmap-mysql
+            items:
+              - key: "host"
+                path: "host"
+              - key: "port"
+                path: "port"
+              - key: "database"
+                path: "database" 
+              - key: "user"
+                path: "user"
+        - name: mysql-persistent-storage
+          persistentVolumeClaim:
+            claimName: nfs-pvc-mysql
